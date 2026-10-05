@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Развозка сотрудников по Астане</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600&family=Unbounded:wght@500;700&display=swap" rel="stylesheet">
+<style>
+/* Layout: линия общественного транспорта — вертикальная трасса с остановками, два рейса рядом */
+:root {
+  --bg: #f3f6fb;
+  --surface: #ffffff;
+  --ink: #0b1f44;
+  --muted: #4a5b7a;
+  --line: #3aa6e8;
+  --gold: #e2a413;
+  --gold-ink: #6b4a00;
+  --board: #0b1f44;
+  --board-ink: #ffffff;
+  --rule: #d5deec;
+  --font-display: "Unbounded", "Arial Black", system-ui, sans-serif;
+  --font-body: "Golos Text", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #07122b; --surface: #0f1d3d; --ink: #eaf1ff; --muted: #9db0d3;
+    --line: #5bb8f0; --gold: #f2b82e; --gold-ink: #f2b82e;
+    --board: #040b1c; --board-ink: #ffffff; --rule: #223560; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #07122b; --surface: #0f1d3d; --ink: #eaf1ff; --muted: #9db0d3;
+  --line: #5bb8f0; --gold: #f2b82e; --gold-ink: #f2b82e;
+  --board: #040b1c; --board-ink: #ffffff; --rule: #223560; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--font-body); font-size: 1rem; line-height: 1.55;
+  padding-inline: 1rem;
+}
+.wrap { max-width: 56rem; margin-inline: auto; padding-block: 2rem 3rem; display: flex; flex-direction: column; gap: 2rem; }
+h1, h2, .time { font-family: var(--font-display); }
+h1 { font-size: clamp(1.6rem, 6vw, 2.8rem); line-height: 1.1; margin: 0; font-weight: 700; text-wrap: balance; }
+h2 { font-size: 1.1rem; margin: 0; font-weight: 700; }
+p { margin: 0; }
+
+/* Шапка */
+.badge {
+  align-self: flex-start; display: inline-flex; align-items: center; gap: .5rem;
+  font-size: .8rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+  background: var(--gold); color: #1d1500; padding: .35rem .8rem; border-radius: 999px;
+}
+.badge::before { content: ""; width: .5rem; height: .5rem; border-radius: 50%; background: #1d1500; }
+header { display: flex; flex-direction: column; gap: 1rem; }
+header p { color: var(--muted); max-width: 42rem; }
+
+/* Табло */
+.board { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.slot {
+  background: var(--board); color: var(--board-ink);
+  border-radius: 1rem; padding: 1.25rem 1.25rem 1.1rem; min-width: 0;
+  display: flex; flex-direction: column; gap: .4rem;
+}
+.slot .label { font-size: .8rem; letter-spacing: .1em; text-transform: uppercase; opacity: .8; }
+.time { font-size: clamp(2.2rem, 10vw, 4rem); font-weight: 700; color: var(--gold); line-height: 1; font-variant-numeric: tabular-nums; }
+.slot .dir { font-size: .95rem; opacity: .9; }
+
+/* Маршруты */
+.routes { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.route { background: var(--surface); border: 1px solid var(--rule); border-radius: 1rem; padding: 1.25rem; min-width: 0; display: flex; flex-direction: column; gap: 1.25rem; }
+.route-head { display: flex; justify-content: space-between; align-items: baseline; gap: .75rem; flex-wrap: wrap; }
+.route-head .t { font-family: var(--font-display); color: var(--gold-ink); font-weight: 700; font-variant-numeric: tabular-nums; }
+.stops { list-style: none; margin: 0; padding: 0; position: relative; }
+.stops li { position: relative; padding: 0 0 1.5rem 2.25rem; min-width: 0; overflow-wrap: anywhere; }
+.stops li:last-child { padding-bottom: 0; }
+.stops li::before { /* линия */
+  content: ""; position: absolute; left: .55rem; top: .9rem; bottom: -.9rem; width: .35rem; background: var(--line); border-radius: 2px;
+}
+.stops li:last-child::before { display: none; }
+.stops li::after { /* остановка */
+  content: ""; position: absolute; left: 0; top: .2rem; width: 1.45rem; height: 1.45rem; border-radius: 50%;
+  background: var(--surface); border: .3rem solid var(--ink);
+}
+.stops li.end::after { border-color: var(--gold); background: var(--gold); }
+.stops .name { font-weight: 600; display: block; }
+.stops .tag { color: var(--muted); font-size: .85rem; }
+.arrive { font-size: .9rem; padding: .6rem .8rem; border-radius: .6rem; background: var(--bg); color: var(--ink); }
+.arrive strong { color: var(--gold-ink); }
+
+/* Таблица */
+.table-scroll { overflow-x: auto; background: var(--surface); border: 1px solid var(--rule); border-radius: 1rem; }
+table { width: 100%; border-collapse: collapse; min-width: 28rem; }
+th, td { text-align: left; padding: .85rem 1.1rem; border-bottom: 1px solid var(--rule); }
+th { font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+tr:last-child td { border-bottom: 0; }
+td.t { font-family: var(--font-display); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+section { display: flex; flex-direction: column; gap: 1rem; }
+
+footer { border-top: 1px solid var(--rule); padding-top: 1.25rem; color: var(--muted); font-size: .92rem; display: flex; flex-direction: column; gap: .4rem; }
+
+@media (max-width: 40rem) {
+  .board, .routes { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="badge">Ежедневно: утром и вечером</span>
+    <h1>Развозка сотрудников по Астане</h1>
+    <p>Микроавтобус забирает работников у Family Village и везёт на работу, а вечером возвращает обратно по тому же маршруту.</p>
+  </header>
+
+  <div class="board" aria-label="Время рейсов">
+    <div class="slot">
+      <span class="label">Утром, на работу</span>
+      <span class="time">06:20</span>
+      <span class="dir">Старт от Family Village</span>
+    </div>
+    <div class="slot">
+      <span class="label">Вечером, домой</span>
+      <span class="time">17:30</span>
+      <span class="dir">Старт от Кунаева 8</span>
+    </div>
+  </div>
+
+  <section aria-labelledby="routes-h">
+    <h2 id="routes-h" hidden>Маршрут</h2>
+    <div class="routes">
+      <article class="route">
+        <div class="route-head"><h2>Утро: на работу</h2><span class="t">06:20</span></div>
+        <ol class="stops">
+          <li><span class="name">Family Village</span><span class="tag">Посадка, старт в 06:20</span></li>
+          <li><span class="name">Мангилик Ел – Улы Дала</span></li>
+          <li><span class="name">Бокейхана</span></li>
+          <li class="end"><span class="name">Кунаева 8</span><span class="tag">Место работы</span></li>
+        </ol>
+        <p class="arrive">Прибытие на работу <strong>не позднее 08:00</strong></p>
+      </article>
+
+      <article class="route">
+        <div class="route-head"><h2>Вечер: с работы</h2><span class="t">17:30</span></div>
+        <ol class="stops">
+          <li><span class="name">Кунаева 8</span><span class="tag">Посадка, старт в 17:30</span></li>
+          <li><span class="name">Бокейхана</span></li>
+          <li><span class="name">Мангилик Ел – Улы Дала</span></li>
+          <li class="end"><span class="name">Family Village</span><span class="tag">Конечная</span></li>
+        </ol>
+        <p class="arrive">Маршрут в обратном порядке</p>
+      </article>
+    </div>
+  </section>
+
+  <section aria-labelledby="sched-h">
+    <h2 id="sched-h">Расписание</h2>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Рейс</th><th>Время</th><th>Откуда</th><th>Куда</th></tr></thead>
+        <tbody>
+          <tr><td>Утренний</td><td class="t">06:20</td><td>Family Village</td><td>Кунаева 8 (до 08:00)</td></tr>
+          <tr><td>Вечерний</td><td class="t">17:30</td><td>Кунаева 8</td><td>Family Village</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    <p>Время на промежуточных остановках (Мангилик Ел – Улы Дала, Бокейхана) уточняйте у ответственного за развозку.</p>
+    <p>Рейсы выполняются ежедневно, утром и вечером.</p>
+  </footer>
+</div>
+</body>
+</html>
